@@ -4,6 +4,7 @@
 typedef struct {
     int pontos;
     int tiros;
+    int arma;
     int acabou;
 } Estado;
 
@@ -29,22 +30,36 @@ char le_tecla(void)
     return 0;
 }
 
+char arma_atual(Estado *jogo)
+{
+    return "0123456789n"[jogo->arma];
+}
+
+void processa_tecla(Estado *jogo, char tecla)
+{
+    if (tecla == 27) {
+        jogo->acabou = 1;
+    } else if (tecla == '\t') {
+        jogo->arma = (jogo->arma + 1) % 11;
+    } else if ((tecla == '\r' || tecla == '\n') && jogo->tiros > 0) {
+        jogo->tiros--;
+    }
+}
+
 void desenha_estado(Estado *jogo)
 {
-    printf("Pontos: %d  tiros: %d  Esc para sair   \r",
-           jogo->pontos, jogo->tiros);
+    printf("%3d %2d %c)))          \r", jogo->pontos,
+           jogo->tiros, arma_atual(jogo));
 }
 
 int main(void)
 {
-    Estado jogo = {0, 30, 0};
+    Estado jogo = {0, 30, 0, 0};
 
     configura_terminal();
     while (!jogo.acabou) {
         desenha_estado(&jogo);
-        if (le_tecla() == 27) {
-            jogo.acabou = 1;
-        }
+        processa_tecla(&jogo, le_tecla());
     }
     normaliza_terminal();
     return 0;
