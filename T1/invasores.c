@@ -1,66 +1,70 @@
+#define _POSIX_C_SOURCE 200809L
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 typedef struct {
-    int pontos;
-    int tiros;
-    int arma;
-    int acabou;
+    int pontos, tiros, arma, acabou;
+    char ataques[10];
 } Estado;
-
-void configura_terminal(void)
-{
-    system("stty raw -echo min 0 time 1 opost");
-    setvbuf(stdin, NULL, _IONBF, 0);
-}
-
-void normaliza_terminal(void)
-{
-    system("stty sane");
-}
 
 char le_tecla(void)
 {
     char tecla;
 
     fflush(stdout);
-    if (fread(&tecla, 1, 1, stdin) == 1) {
-        return tecla;
+    return fread(&tecla, 1, 1, stdin) == 1 ? tecla : 0;
+}
+
+void move_ataques(Estado *jogo)
+{
+    int i;
+
+    for (i = 0; i < 9; i++) {
+        jogo->ataques[i] = jogo->ataques[i + 1];
     }
-    return 0;
+    jogo->ataques[9] = "0123456789"[rand() % 10];
 }
 
-char arma_atual(Estado *jogo)
+void desenha(Estado *jogo)
 {
-    return "0123456789n"[jogo->arma];
-}
+    int i;
 
-void processa_tecla(Estado *jogo, char tecla)
-{
-    if (tecla == 27) {
-        jogo->acabou = 1;
-    } else if (tecla == '\t') {
-        jogo->arma = (jogo->arma + 1) % 11;
-    } else if ((tecla == '\r' || tecla == '\n') && jogo->tiros > 0) {
-        jogo->tiros--;
+    printf("%3d %2d %c)))", jogo->pontos, jogo->tiros,
+           "0123456789n"[jogo->arma]);
+    for (i = 0; i < 10; i++) {
+        printf("%c", jogo->ataques[i]);
     }
-}
-
-void desenha_estado(Estado *jogo)
-{
-    printf("%3d %2d %c)))          \r", jogo->pontos,
-           jogo->tiros, arma_atual(jogo));
+    printf("\r");
 }
 
 int main(void)
 {
-    Estado jogo = {0, 30, 0, 0};
+    Estado jogo = {0, 30, 0, 0, {' ', ' ', ' ', ' ', ' ',
+                                  ' ', ' ', ' ', ' ', ' '}};
+    struct timespec inicio, agora;
 
-    configura_terminal();
+    srand(time(NULL));
+    system("stty raw -echo min 0 time 1 opost");
+    setvbuf(stdin, NULL, _IONBF, 0);
+    clock_gettime(CLOCK_MONOTONIC, &inicio);
     while (!jogo.acabou) {
-        desenha_estado(&jogo);
-        processa_tecla(&jogo, le_tecla());
+        char tecla = le_tecla();
+
+        if (tecla == 27) {
+            jogo.acabou = 1;
+        } else if (tecla == '\t') {
+            jogo.arma = (jogo.arma + 1) % 11;
+        } else if ((tecla == '\r' || tecla == '\n') && jogo.tiros > 0) {
+            jogo.tiros--;
+        }
+        clock_gettime(CLOCK_MONOTONIC, &agora);
+        if (agora.tv_sec - inicio.tv_sec >= 2) {
+            move_ataques(&jogo);
+            inicio = agora;
+        }
+        desenha(&jogo);
     }
-    normaliza_terminal();
+    system("stty sane");
     return 0;
 }
